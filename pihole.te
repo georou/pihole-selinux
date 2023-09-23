@@ -1,0 +1,259 @@
+policy_module(pihole, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+#permissive pihole_t;
+#permissive pihole_cgi_script_t;
+
+
+#######################################
+#
+# PiHole policy
+#
+type pihole_t;
+type pihole_exec_t;
+init_daemon_domain(pihole_t, pihole_exec_t)
+init_nnp_daemon_domain(pihole_t) # Needed when using systemd hardening options in service file. NoNewPrivileges gets implied and so SELinux can't transition. https://danwalsh.livejournal.com/78312.html
+role system_r types pihole_t;
+
+type pihole_initrc_exec_t;
+init_script_file(pihole_initrc_exec_t)
+
+type pihole_data_t;
+files_type(pihole_data_t)
+
+type pihole_etc_t;
+files_config_file(pihole_etc_t)
+
+type pihole_tmp_t;
+files_tmp_file(pihole_tmp_t)
+
+type pihole_tmpfs_t;
+files_tmpfs_file(pihole_tmpfs_t)
+
+type pihole_unit_file_t;
+systemd_unit_file(pihole_unit_file_t)
+
+type pihole_var_log_t alias pihole_log_t;
+logging_log_file(pihole_var_log_t)
+
+type pihole_var_run_t;
+files_pid_file(pihole_var_run_t)
+
+type pihole_port_t;
+corenet_port(pihole_port_t)
+
+allow pihole_t self:capability { chown fowner ipc_lock net_bind_service sys_nice }; # chown & fowner tripped on prestart file. Source files search shows prestart and gravity.sh use it.
+allow pihole_t self:process { execmem setsched };
+allow pihole_t self:netlink_route_socket create_netlink_socket_perms;
+allow pihole_t self:tcp_socket create_stream_socket_perms;
+allow pihole_t self:udp_socket create_socket_perms;
+allow pihole_t self:unix_dgram_socket create_socket_perms;
+
+allow pihole_t pihole_cgi_rw_content_t:file map;
+allow pihole_t pihole_cgi_script_exec_t:file getattr;
+
+allow pihole_t pihole_port_t:tcp_socket name_bind;
+
+#manage_dirs_pattern(pihole_t, pihole_data_t, pihole_data_t)
+#manage_files_pattern(pihole_t, pihole_data_t, pihole_data_t)
+
+allow pihole_t pihole_etc_t:file { map relabelfrom relabelto }; # Prestart script uses install to create empty files in /etc/pihole.  Isn't needed if using touch instead.
+manage_dirs_pattern(pihole_t, pihole_etc_t, pihole_etc_t)
+manage_files_pattern(pihole_t, pihole_etc_t, pihole_etc_t)
+files_etc_filetrans(pihole_t, pihole_etc_t, { dir file })
+
+allow pihole_t pihole_tmp_t:file map;
+manage_dirs_pattern(pihole_t, pihole_tmp_t, pihole_tmp_t)
+manage_files_pattern(pihole_t, pihole_tmp_t, pihole_tmp_t)
+files_tmp_filetrans(pihole_t, pihole_tmp_t, { dir file })
+
+allow pihole_t pihole_tmpfs_t:file map;
+manage_dirs_pattern(pihole_t, pihole_tmpfs_t, pihole_tmpfs_t)
+manage_files_pattern(pihole_t, pihole_tmpfs_t, pihole_tmpfs_t)
+fs_tmpfs_filetrans(pihole_t, pihole_tmpfs_t, { dir file })
+
+allow pihole_t pihole_var_log_t:file { map relabelfrom relabelto }; # Prestart script uses install to create an empty file in /var/log/pihole
+manage_dirs_pattern(pihole_t, pihole_var_log_t, pihole_var_log_t)
+manage_files_pattern(pihole_t, pihole_var_log_t, pihole_var_log_t)
+manage_lnk_files_pattern(pihole_t, pihole_var_log_t, pihole_var_log_t)
+logging_log_filetrans(pihole_t, pihole_var_log_t, { dir file lnk_file })
+
+allow pihole_t pihole_var_run_t:file { relabelfrom relabelto }; # Prestart script uses install to create an empty file in /run/pihole-FTL.pid
+manage_dirs_pattern(pihole_t, pihole_var_run_t, pihole_var_run_t)
+manage_files_pattern(pihole_t, pihole_var_run_t, pihole_var_run_t)
+manage_sock_files_pattern(pihole_t, pihole_var_run_t, pihole_var_run_t)
+files_pid_filetrans(pihole_t, pihole_var_run_t, { dir file })
+
+manage_dirs_pattern(pihole_t, pihole_cgi_content_t, pihole_cgi_content_t)
+manage_files_pattern(pihole_t, pihole_cgi_content_t, pihole_cgi_content_t)
+manage_dirs_pattern(pihole_t, pihole_cgi_rw_content_t, pihole_cgi_rw_content_t)
+manage_files_pattern(pihole_t, pihole_cgi_rw_content_t, pihole_cgi_rw_content_t)
+
+# Added an entry as a DNS resolver in settings menu
+allow pihole_t dnsmasq_etc_t:dir list_dir_perms;
+dnsmasq_read_config(pihole_t)
+dnsmasq_write_config(pihole_t)
+#manage_dirs_pattern(pihole_t, dnsmasq_etc_t, dnsmasq_etc_t)
+#manage_files_pattern(pihole_t, dnsmasq_etc_t, dnsmasq_etc_t)
+
+kernel_read_network_state(pihole_t) # Pressed 'Restart DNS Resolver' in Settings menu
+kernel_read_system_state(pihole_t)
+
+auth_read_passwd_file(pihole_t)
+
+corenet_tcp_bind_dns_port(pihole_t)
+corenet_tcp_connect_dns_port(pihole_t) # Popped up randomly after leaving pihole running for weeks. 28/9/22. name_connect deny
+corenet_udp_bind_dns_port(pihole_t)
+corenet_udp_bind_dhcpd_port(pihole_t) # Using pihole as a DHCP service
+corenet_tcp_bind_generic_node(pihole_t)
+corenet_udp_bind_generic_node(pihole_t)
+
+corecmd_exec_bin(pihole_t) # Using cut and install commands in scripts triggered this
+corecmd_exec_shell(pihole_t)
+
+fs_getattr_tmpfs(pihole_t)
+fs_getattr_xattr_fs(pihole_t)
+
+logging_manage_var_log_symlinks(pihole_t) # Only needed until v6 removes creating symlinks in pihole-FTL-prestart.sh
+
+sysnet_read_config(pihole_t)
+sysnet_exec_ifconfig(pihole_t)
+
+selinux_validate_context(pihole_t) # Prestart script uses install to create empty files in /etc/pihole. Isn't needed if using touch instead.
+seutil_read_file_contexts(pihole_t) # Prestart script uses install to create empty files in /etc/pihole. Isn't needed if using touch instead.
+
+optional_policy(`
+    cron_system_entry(pihole_t, pihole_exec_t)
+')
+
+optional_policy(`
+    logrotate_domtrans(pihole_t)
+')
+
+# For use with systemd sandboxing PrivateTmp in unit file
+optional_policy(`
+    systemd_private_tmp(pihole_tmp_t)
+')
+
+#######################################
+#
+# PiHole CGI script local policy
+#
+apache_content_template(pihole_cgi)
+apache_content_alias_template(pihole_cgi, pihole_cgi)
+
+type pihole_cgi_script_tmp_t;
+files_tmp_file(pihole_cgi_script_tmp_t)
+
+type pihole_cgi_script_tmpfs_t;
+files_tmpfs_file(pihole_cgi_script_tmpfs_t)
+
+# Clicked disable for X amount of time. Writes to /etc/pihole/setupVars.conf via addOrEditKeyValPair() in utils.sh
+# Root needs to write to files but has no DAC permissions in /etc/pihole.
+allow pihole_cgi_script_t self:capability { dac_read_search dac_override }; 
+
+allow pihole_cgi_script_t self:capability { chown fowner fsetid kill net_admin setgid setuid sys_resource sys_ptrace };
+allow pihole_cgi_script_t self:process { execmem setfscreate setpgid setrlimit };
+allow pihole_cgi_script_t self:netlink_route_socket create_netlink_socket_perms;
+allow pihole_cgi_script_t self:netlink_tcpdiag_socket r_netlink_socket_perms;
+allow pihole_cgi_script_t self:tcp_socket create_socket_perms;
+allow pihole_cgi_script_t self:udp_socket create_socket_perms;
+
+allow pihole_cgi_script_t pihole_exec_t:file execmod; # Clicked Tools > Pi-hole diagnosis
+allow pihole_cgi_script_t pihole_cgi_content_t:file map; # Clicked Enable/Disable on entry in Blacklist
+
+manage_dirs_pattern(pihole_cgi_script_t, pihole_data_t, pihole_data_t)
+manage_files_pattern(pihole_cgi_script_t, pihole_data_t, pihole_data_t)
+
+manage_dirs_pattern(pihole_cgi_script_t, pihole_cgi_script_tmp_t, pihole_cgi_script_tmp_t)
+manage_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmp_t, pihole_cgi_script_tmp_t)
+#manage_lnk_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmp_t, pihole_cgi_script_tmp_t)
+#manage_sock_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmp_t, pihole_cgi_script_tmp_t)
+files_tmp_filetrans(pihole_cgi_script_t, pihole_cgi_script_tmp_t, { dir file })
+allow pihole_cgi_script_t pihole_cgi_script_tmp_t:file map; # Clicked BackUp config
+
+manage_dirs_pattern(pihole_cgi_script_t, pihole_cgi_script_tmpfs_t, pihole_cgi_script_tmpfs_t)
+manage_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmpfs_t, pihole_cgi_script_tmpfs_t)
+#manage_lnk_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmpfs_t, pihole_cgi_script_tmpfs_t)
+#manage_sock_files_pattern(pihole_cgi_script_t, pihole_cgi_script_tmpfs_t, pihole_cgi_script_tmpfs_t)
+fs_tmpfs_filetrans(pihole_cgi_script_t, pihole_cgi_script_tmpfs_t, { dir file lnk_file })
+
+# Future consideration to create a shared domain to allow these. V6 Pi-hole will combine webserver into one so this requirement might change.
+pihole_manage_config(pihole_cgi_script_t)
+pihole_read_pid_files(pihole_cgi_script_t)
+pihole_read_log(pihole_cgi_script_t)
+pihole_signal(pihole_cgi_script_t)
+files_etc_filetrans(pihole_cgi_script_t, pihole_etc_t, { dir file })
+
+pihole_systemctl(pihole_cgi_script_t) # Pressed 'Restart DNS Resolver' in Settings menu
+name_connect_pihole_port(pihole_cgi_script_t)
+
+kernel_dgram_send(pihole_cgi_script_t)
+kernel_read_net_sysctls(pihole_cgi_script_t) # Triggered from Fedora Server 38
+kernel_read_network_state(pihole_cgi_script_t) # Triggered from Fedora Server 38
+#kernel_request_load_module(pihole_cgi_script_t) # Popped up randomly when clicking Update Gravity. Loads=tcp-ulp-tls
+
+# https://github.com/pi-hole/pi-hole/blob/8495565a6f065f372a8b0c64265ff3cdabe26d4b/advanced/Scripts/chronometer.sh#L205
+dev_list_sysfs(pihole_cgi_script_t)
+
+auth_use_pam(pihole_cgi_script_t) # For using sudo. Devs have chosen to add lighttpd to sudoers and elevate to run commands with the /usr/bin/pihole-FTL binary.
+apache_rw_stream_sockets(pihole_cgi_script_t)
+apache_write_log(pihole_cgi_script_t)
+
+corenet_tcp_connect_http_port(pihole_cgi_script_t)
+corenet_udp_bind_generic_node(pihole_cgi_script_t)
+
+dnsmasq_read_config(pihole_cgi_script_t)
+manage_dirs_pattern(pihole_cgi_script_t, dnsmasq_etc_t, dnsmasq_etc_t)
+manage_files_pattern(pihole_cgi_script_t, dnsmasq_etc_t, dnsmasq_etc_t)
+
+domain_read_all_domains_state(pihole_cgi_script_t)
+
+files_list_tmp(pihole_cgi_script_t)
+
+miscfiles_read_generic_certs(pihole_cgi_script_t)
+
+init_read_utmp(pihole_cgi_script_t) # The use of sudo in /var/www/html/admin/scripts/pi-hole/php scripts triggers this
+
+gen_require(`
+	type httpd_sys_content_t;
+')
+# Disable timer file created in /var/www/html/custom_disable_timer when using webGUI "Disable For x minutes"
+filetrans_pattern(pihole_cgi_script_t, httpd_sys_content_t, pihole_cgi_rw_content_t, file, "custom_disable_timer")
+
+# Fedora Server 38 with kernel 6.4.14 supports auditing io_uring
+# avc:  denied  { sqpoll } for  pid=6161 comm="dig" scontext=system_u:system_r:pihole_cgi_script_t:s0 tcontext=system_u:system_r:pihole_cgi_script_t:s0 tclass=io_uring permissive=0
+# Triggered selecting Update Gravity in webUI
+# https://www.paul-moore.com/blog/d/2022/01/linux_v516.html
+optional_policy(`
+        gen_require(`
+                type pihole_cgi_script_t;
+        ')
+        allow pihole_cgi_script_t self:io_uring sqpoll;
+')
+
+
+#################################
+#
+# Unconfined plugin local policy
+#
+optional_policy(`
+    type pihole_unconfined_t;
+    domain_type(pihole_unconfined_t)
+
+    type pihole_unconfined_exec_t;
+    application_executable_file(pihole_unconfined_exec_t)
+
+    domain_entry_file(pihole_unconfined_t, pihole_unconfined_exec_t)
+    role system_r types pihole_unconfined_t;
+
+    domtrans_pattern(pihole_t, pihole_unconfined_exec_t, pihole_unconfined_t)
+    domtrans_pattern(pihole_cgi_script_t, pihole_unconfined_exec_t, pihole_unconfined_t)
+
+    optional_policy(`
+        unconfined_domain(pihole_unconfined_t)
+    ')
+')

@@ -1,0 +1,42 @@
+/etc/init\.d/pihole-ftl                         --	gen_context(system_u:object_r:pihole_initrc_exec_t,s0)
+/etc/rc\.d/init\.d/pihole-FTL                   --	gen_context(system_u:object_r:pihole_initrc_exec_t,s0)
+
+/etc/systemd/system/pihole-FTL.*\.service       --	gen_context(system_u:object_r:pihole_unit_file_t,s0)
+/usr/lib/systemd/system/pihole-FTL.*\.service   --	gen_context(system_u:object_r:pihole_unit_file_t,s0)
+
+/dev/shm/FTL-.*                                 --	gen_context(system_u:object_r:pihole_tmpfs_t,s0)
+
+/etc/cron\.d/pihole                             --	gen_context(system_u:object_r:pihole_exec_t,s0)
+/etc/pihole(/.*)?                                   gen_context(system_u:object_r:pihole_etc_t,s0)
+/etc/\.pihole(/.*)?                                 gen_context(system_u:object_r:pihole_etc_t,s0)
+/etc/pihole/logrotate                           --  gen_context(system_u:object_r:pihole_var_log_t,s0)
+
+#/opt/pihole(/.*)?                                  gen_context(system_u:object_r:pihole_data_t,s0)
+/opt/pihole/.+\.sh                              --	gen_context(system_u:object_r:pihole_exec_t,s0)
+/opt/pihole/COL_TABLE                           --	gen_context(system_u:object_r:pihole_exec_t,s0)
+/opt/pihole/chronometer\.sh                     --	gen_context(system_u:object_r:pihole_unconfined_exec_t,s0)
+/opt/pihole/piholeDebug\.sh                     --	gen_context(system_u:object_r:pihole_unconfined_exec_t,s0)
+
+/tmp/sess_.*                                    --  gen_context(system_u:object_r:pihole_cgi_script_tmp_t,s0)
+
+/usr/bin/pihole-FTL                             --	gen_context(system_u:object_r:pihole_exec_t,s0)
+/usr/local/bin/pihole                           --	gen_context(system_u:object_r:pihole_exec_t,s0)
+/usr/local/bin/php-cgi-pihole                   --	gen_context(system_u:object_r:pihole_cgi_script_exec_t,s0)
+
+/var/run/pihole(/.*)?                               gen_context(system_u:object_r:pihole_var_run_t,s0)
+/var/run/pihole-FTL.*                           --  gen_context(system_u:object_r:pihole_var_run_t,s0)
+
+/var/log/pihole.*                               --	gen_context(system_u:object_r:pihole_var_log_t,s0)
+/var/log/pihole(/.*)?                               gen_context(system_u:object_r:pihole_var_log_t,s0)
+/var/log/pihole.log                             -l	gen_context(system_u:object_r:pihole_var_log_t,s0)
+/var/log/pihole-FTL.log                         -l	gen_context(system_u:object_r:pihole_var_log_t,s0)
+
+/var/www/html/custom_disable_timer              --	gen_context(system_u:object_r:pihole_cgi_rw_content_t,s0)
+/var/www/html/pihole(/.*)?                          gen_context(system_u:object_r:pihole_cgi_content_t,s0)
+#/var/www/html/pihole/.+\.php                   --  gen_context(system_u:object_r:pihole_cgi_script_exec_t,s0)
+/var/www/html/admin(/.*)?                           gen_context(system_u:object_r:pihole_cgi_content_t,s0)
+/var/www/html/admin/\.git(/.*)?                     gen_context(system_u:object_r:pihole_cgi_rw_content_t,s0)
+/var/www/html/admin/\.github(/.*)?                  gen_context(system_u:object_r:pihole_cgi_rw_content_t,s0)
+/var/www/html/admin/scripts(/.*)?                   gen_context(system_u:object_r:pihole_cgi_script_exec_t,s0)
+#/var/www/html/admin/.+\.php                    --  gen_context(system_u:object_r:pihole_cgi_script_exec_t,s0)
+#/var/www/html/admin/.+\.js                     --  gen_context(system_u:object_r:pihole_cgi_script_exec_t,s0)

@@ -1,0 +1,273 @@
+## <summary></summary>
+
+########################################
+## <summary>
+##	Create a set of derived types for various
+##	munin plugins,
+## </summary>
+## <param name="prefix">
+##	<summary>
+##	The name to be used for deriving type names.
+##	</summary>
+## </param>
+#
+#template(`pihole_domain_template',`
+#	gen_require(`
+#		attribute pihole_domain;
+#	')
+#
+#	type pihole_$1_t, pihole_domain;
+#	type pihole_$1_exec_t;
+#	init_daemon_domain(pihole_$1_t, pihole_$1_exec_t)
+#
+#	type pihole_$1_tmp_t;
+#	files_tmp_file(pihole_$1_tmp_t)
+#
+#	manage_dirs_pattern(pihole_$1_t, pihole_$1_tmp_t, pihole_$1_tmp_t)
+#')
+
+########################################
+## <summary>
+##	Execute pihole_exec_t in the pihole domain.
+## </summary>
+## <param name="domain">
+## <summary>
+##	Domain allowed to transition.
+## </summary>
+## </param>
+#
+interface(`pihole_domtrans',`
+	gen_require(`
+		type pihole_t, pihole_exec_t;
+	')
+
+	domtrans_pattern($1, pihole_exec_t, pihole_t)
+')
+
+########################################
+## <summary>
+##	Execute the pihole program in
+##	the callers domain.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_exec',`
+	gen_require(`
+		type pihole_exec_t;
+	')
+
+	corecmd_search_bin($1)
+	can_exec($1, pihole_exec_t)
+')
+
+#######################################
+## <summary>
+##  Allow domain to connect to pihole ftl port.
+## </summary>
+## <param name="domain">
+## <summary>
+##  Domain allowed access.
+## </summary>
+## </param>
+#
+interface(`name_connect_pihole_port',`
+	gen_require(`
+		class tcp_socket name_connect;
+		type pihole_port_t;
+	')
+
+	allow $1 pihole_port_t:tcp_socket name_connect;
+')
+
+#######################################
+## <summary>
+##	Allow the specified domain to manage
+##	pihole configuration files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_manage_config',`
+	gen_require(`
+		type pihole_etc_t;
+	')
+
+	files_search_etc($1)
+	allow $1 pihole_etc_t:dir manage_dir_perms;
+	allow $1 pihole_etc_t:file manage_file_perms;
+')
+
+#######################################
+## <summary>
+##	Read pihole etc files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_read_config',`
+	gen_require(`
+		type pihole_etc_t;
+	')
+
+	files_search_etc($1)
+	allow $1 pihole_etc_t:dir list_dirs_perms;
+	allow $1 pihole_etc_t:file read_file_perms;
+
+	#($1, pihole_etc_t, pihole_etc_t)
+	#read_dirs_pattern($1, pihole_etc_t, pihole_etc_t)
+	#read_files_pattern($1, pihole_etc_t, pihole_etc_t)
+')
+
+#######################################
+## <summary>
+##	Write to pihole config.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_write_config',`
+	gen_require(`
+		type pihole_etc_t;
+	')
+
+	files_search_etc($1)
+	allow $1 pihole_etc_t:dir list_dir_perms;
+	allow $1 pihole_etc_t:file write_file_perms;
+
+	#mmap_exec_files_pattern($1, pihole_etc_t, pihole_etc_t)
+	#manage_dirs_pattern($1, pihole_etc_t, pihole_etc_t)
+	#manage_files_pattern($1, pihole_etc_t, pihole_etc_t)
+')
+
+#######################################
+## <summary>
+##	Append pihole log files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_append_log',`
+	gen_require(`
+		type pihole_var_log_t;
+	')
+
+	logging_search_logs($1)
+	allow $1 pihole_var_log_t:dir list_dir_perms;
+	allow $1 pihole_var_log_t:file append_file_perms;
+')
+
+#######################################
+## <summary>
+##	Read pihole log files.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+
+interface(`pihole_read_log',`
+	gen_require(`
+		type pihole_var_log_t;
+	')
+
+	logging_search_logs($1)
+	allow $1 pihole_var_log_t:dir list_dir_perms;
+	allow $1 pihole_var_log_t:file read_file_perms;
+')
+
+########################################
+## <summary>
+##	Read pihole pid files
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`pihole_read_pid_files',`
+	gen_require(`
+		type pihole_var_run_t;
+	')
+
+	files_search_pids($1)
+	allow $1 pihole_var_run_t:file read_file_perms;
+')
+
+########################################
+## <summary>
+##	Execute pihole in the pihole domain.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed to transition.
+##	</summary>
+## </param>
+#
+interface(`pihole_systemctl',`
+	gen_require(`
+		type pihole_t, pihole_unit_file_t;
+	')
+
+	systemd_exec_systemctl($1)
+	init_reload_services($1)
+	allow $1 pihole_unit_file_t:file read_file_perms;
+	allow $1 pihole_unit_file_t:service manage_service_perms;
+
+	ps_process_pattern($1, pihole_t)
+')
+
+########################################
+## <summary>
+##	Send generic signals to pihole.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+#
+interface(`pihole_signal',`
+	gen_require(`
+		type pihole_t;
+	')
+
+	allow $1 pihole_t:process signal;
+')
+
+########################################
+## <summary>
+##  Execute pihole unconfined with
+##  a domain transition.
+## </summary>
+## <param name="domain">
+## <summary>
+##  Domain allowed access.
+## </summary>
+## </param>
+#
+interface(`pihole_domtrans_unconfined',`
+   gen_require(`
+        type pihole_unconfined_t, pihole_unconfined_exec_t;
+   ')
+
+    domtrans_pattern($1, pihole_unconfined_exec_t, pihole_unconfined_t)
+')
