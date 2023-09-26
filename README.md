@@ -1,4 +1,4 @@
-# SELinux Policy for Pi-hole
+# SELinux Policy for Pi-hole V5
 
 THIS POLICY IS STILL UNDER CONSTANT TESTING.
 
@@ -131,4 +131,7 @@ libselinux-utils-3.5-1.el9.x86_64
 selinux-policy-38.1.23-1.el9.noarch
 selinux-policy-targeted-38.1.23-1.el9.noarch
 selinux-policy-devel-38.1.23-1.el9.noarch
+Pi-hole v5.17.1
+FTL v5.23
+Web Interface v5.20.1
 ```
