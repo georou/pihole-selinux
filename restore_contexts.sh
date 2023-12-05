@@ -1,6 +1,6 @@
 #!/bin/bash
 
-restore -RvF /etc/systemd/system \
+restorecon -RvF /etc/systemd/system \
             /etc/pihole \
             /etc/.pihole \
             /opt/pihole \
